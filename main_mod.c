@@ -48,14 +48,20 @@ void led_off(uint8_t led);
 #define BTNreturn_pin = GPIO_Pin_8;
 
 // LCD pins
-#define LCD_D4 = GPIO_Pin_10;
-#define LCD_D5 = GPIO_Pin_11;
-#define LCD_D6 = GPIO_Pin_12;
-#define LCD_D7 = GPIO_Pin_13;
-#define LCD_E = GPIO_Pin_14;	// must have PWM?
-#define LCD_RS = GPIO_Pin_15; 
+#define LCD_D4pin = GPIO_Pin_10;	// GPIOB
+#define LCD_D5pin = GPIO_Pin_11;
+#define LCD_D6pin = GPIO_Pin_12;
+#define LCD_D7pin = GPIO_Pin_13;
+#define LCD_Epin = GPIO_Pin_14;	// must have PWM?
+#define LCD_RSpin = GPIO_Pin_15; 
 // LCD V0 : enter value for contrast, no need of potentiometer
 // How to control arduino LCD with STM32? Is there an existing library?
+
+// LCD variables
+uint8_t row = 0;
+uint8_t col = 0;
+
+
 
 
 __IO uint32_t SH_period = 20;			// Shift gate period	
@@ -131,6 +137,13 @@ int main(void)
 
 	/* Setup ICG (TIM5) and SH (TIM2) */
 	TIM_ICG_SH_conf();
+
+	/* LCD init and starting proccess */
+	lcd_init();
+
+	lcd_put_cur(0, 0);
+	lcd_send_string("STARTING");
+
 
 
 	//flush_CCD();
@@ -384,10 +397,10 @@ void ledBTN_conf(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz; 
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;	// Output
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;	// push puk=ll
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;	// low
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;	// no pull, no push
 
 	/* 	Clock the GPIOs */
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
@@ -403,7 +416,8 @@ void ledBTN_conf(void)
 
 	GPIO_InitStructure.GPIO_Pin = LED3_pin;
     uint8_t led3 = GPIO_Init(GPIOB, &GPIO_InitStructure);
-
+	
+	
 	/* LCD D4 to D7, E and RS */
 	GPIO_InitStructure.GPIO_Pin = LCD_D4;
     uint8_t lcdD4 = GPIO_Init(GPIOB, &GPIO_InitStructure);
@@ -423,7 +437,7 @@ void ledBTN_conf(void)
 	GPIO_InitStructure.GPIO_Pin = LCD_RS;
     uint8_t lcdRS = GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-	// change mode for BTN : IN
+	// change mode for BTN : mode IN
 	GPIO_InitStructure.GPIO_mode = GPIO_Mode_IN;
 	
 	/* BTN move, select and return */
@@ -502,6 +516,108 @@ void led_on(uint8_t led){
 		}
 	GPIO_Write(led, 0);	// led off
 	Delay(5);
+}
+
+
+// functions to lcd
+// From : https://controllerstech.com/interface-lcd-16x2-with-stm32-without-i2c/
+// Do not need timer delay
+
+void send_to_led(char data, int rs) {
+	GPIO_WritePin(GPIOB, LCD_RSpin, rs)	// rs = 1 for data, rs = 0 for cmd
+	GPIO_WritePin(GPIOB, LCD_D7pin, ((data >> 3) & 0x01));
+	GPIO_WritePin(GPIOB, LCD_D6pin, ((data >> 2) & 0x01));
+	GPIO_WritePin(GPIOB, LCD_D5pin, ((data >> 1) & 0x01));
+	GPIO_WritePin(GPIOB, LCD_D4pin, ((data >> 0) & 0x01));
+
+	/* Toggle EN PIN to send the data
+	 * if the HCLK > 100 MHz, use the  20 us delay
+	 * if the LCD still doesn't work, increase the delay to 50, 80 or 100..
+	 */
+	GPIO_WritePin(GPIOB, LCD_Epin, 1);
+	delay(20);
+	HAL_GPIO_WritePin(GPIOB, LCD_Epin, 0);
+	delay(20);
+
+}
+
+void lcd_send_cmd(char cmd)
+{
+	char datatosend;
+
+	/* send upper nibble first */
+	datatosend = ((cmd >> 4) & 0x0f);
+	send_to_lcd(datatosend, 0);  // RS must be 0 while sending command
+
+	/* send Lower Nibble */
+	datatosend = ((cmd) & 0x0f);
+	send_to_lcd(datatosend, 0);
+}
+
+void lcd_send_data(char data)
+{
+	char datatosend;
+
+	/* send higher nibble */
+	datatosend = ((data >> 4) & 0x0f);
+	send_to_lcd(datatosend, 1);  // rs =1 for sending data
+
+	/* send Lower nibble */
+	datatosend = ((data) & 0x0f);
+	send_to_lcd(datatosend, 1);
+}
+
+void lcd_clear(void)
+{
+	lcd_send_cmd(0x01);
+	Delay(2);
+}
+
+void lcd_put_cur(int row, int col)
+{
+	switch (row)
+	{
+	case 0:
+		col |= 0x80;
+		break;
+	case 1:
+		col |= 0xC0;
+		break;
+	}
+
+	lcd_send_cmd(col);
+}
+
+
+void lcd_init(void)
+{
+	// 4 bit initialisation
+	Delay(50);  // wait for >40ms
+	lcd_send_cmd(0x30);
+	Delay(5);  // wait for >4.1ms
+	lcd_send_cmd(0x30);
+	Delay(1);  // wait for >100us
+	lcd_send_cmd(0x30);
+	Delay(10);
+	lcd_send_cmd(0x20);  // 4bit mode
+	Delay(10);
+
+	// dislay initialisation
+	lcd_send_cmd(0x28); // Function set --> DL=0 (4 bit mode), N = 1 (2 line display) F = 0 (5x8 characters)
+	Delay(1);
+	lcd_send_cmd(0x08); //Display on/off control --> D=0,C=0, B=0  ---> display off
+	Delay(1);
+	lcd_send_cmd(0x01);  // clear display
+	Delay(1);
+	Delay(1);
+	lcd_send_cmd(0x06); //Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
+	Delay(1);
+	lcd_send_cmd(0x0C); //Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
+}
+
+void lcd_send_string(char* str)
+{
+	while (*str) lcd_send_data(*str++);
 }
 
 
