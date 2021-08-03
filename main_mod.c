@@ -34,8 +34,17 @@ void virtual_GND(void);
 void flush_CCD(void);
 void NVIC_conf(void);
 void ledBTN_conf(void);
+
+// LED function
 void led_on(uint8_t led);
-void led_off(uint8_t led);
+
+// LCD
+void lcd_init(void);   // initialize lcd
+void lcd_send_cmd(char cmd);  // send command to the lcd
+void lcd_send_data(char data);  // send data to the lcd
+void lcd_send_string(char* str);  // send string to the lcd
+void lcd_put_cur(int row, int col);  // put cursor at the entered position row (0 or 1), col (0-15);
+void lcd_clear(void);
 
 // LED pins
 #define LED1_pin = GPIO_Pin_6; // GPIO_Pin_6 in GPIOB
@@ -174,11 +183,40 @@ int main(void)
 			TIM_ICG_SH_conf();
 		}
 
+
+
+		/* WORKFLOW PHYSICAL
+		* 1. Biosensor opening when connecting Nucleo to PC (or with switch)
+		* 2. Put chip
+		* 3. Pressing button to start acquisition with nothing
+		* 4. Pressing button to start acquisition with water
+		* 5. Pressing button to start acquisition with sampling
+		* 6. Output results on LCD (concentration, rate and curve)
+		*/
+
+		/* WORKFLOW ANALYTICAL
+		* 1. LED1 opens
+		* 2. Read 1 acquisition
+		* 3. Find peak position
+		* 4. repeat for LED2 and LED3
+		* 5. After all cycles are finished (about 10-15 minutes for full calibration curve and about 2 minutes for actual test) : calculate rate
+		*	 Rate = speed/velocity of changes of peak position
+		* 6. Output concentration of sampling (linked to rate of changes)
+		*/
+
+
+
+
+		// Buttons : bouncing --> add delay. Is 50ms enough?
+
 		// switch (data_flag) for every led
 
 		// first lecture with average for sampling
 		// Setup, only once
-		led_on(LED1_pin, LED1Buffer1); // switch (data_flag) is in led_on function
+
+	
+
+		/*led_on(LED1_pin, LED1Buffer1); // switch (data_flag) is in led_on function
 		led_on(LED2_pin, LED2Buffer1);
 		led_on(LED3_pin, LED3Buffer1);
 
@@ -187,6 +225,8 @@ int main(void)
 		led_on(LED1_pin, LED1Buffer2); // switch (data_flag) is in led_on function
 		led_on(LED2_pin, LED2Buffer2);
 		led_on(LED3_pin, LED3Buffer2);
+
+		*/
 
 		/* 
 
@@ -200,9 +240,13 @@ int main(void)
 
 		*/
 
+		
+		/*
 		LED1Buffer1 = LED1Buffer2;
 		LED2Buffer1 = LED2Buffer2;
 		LED3Buffer1 = LED3Buffer2;
+
+		*/
 
 
 		/*
