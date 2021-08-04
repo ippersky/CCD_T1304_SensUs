@@ -47,16 +47,20 @@ void lcd_put_cur(int row, int col);  // put cursor at the entered position row (
 void lcd_clear(void);	// clear lcd
 
 // LED pins
+#define LED_Port GPIOB
 #define LED1_pin GPIO_Pin_6 // GPIO_Pin_6 in GPIOB
 #define LED2_pin GPIO_Pin_7
 #define LED3_pin GPIO_Pin_8
 
+
 // Buttons pins
+#define BTN_Port GPIOA
 #define BTNmove_pin GPIO_Pin_6 // GPIO_Pin6 in GPIOA
 #define BTNselect_pin GPIO_Pin_7
 #define BTNreturn_pin GPIO_Pin_8
 
 // LCD pins
+#define LCD_Port GPIOB
 #define LCD_D4pin GPIO_Pin_10	// GPIOB
 #define LCD_D5pin GPIO_Pin_11
 #define LCD_D6pin GPIO_Pin_12
@@ -458,51 +462,51 @@ void ledBTN_conf(void)
 
 	/* LED1 to LED3 */
 	GPIO_InitStructure.GPIO_Pin = LED1_pin;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(LED_Port, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = LED2_pin;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(LED_Port, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = LED3_pin;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(LED_Port, &GPIO_InitStructure);
 	
 	
 	/* LCD D4 to D7, E and RS */
 	GPIO_InitStructure.GPIO_Pin = LCD_D4pin;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(LCD_Port, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = LCD_D5pin;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(LCD_Port, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = LCD_D6pin;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(LCD_Port, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = LCD_D7pin;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(LCD_Port, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = LCD_Epin;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(LCD_Port, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = LCD_RSpin;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(LCD_Port, &GPIO_InitStructure);
 
 	// change mode for BTN : mode IN
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;	// Input
 	
 	/* BTN move, select and return */
 	GPIO_InitStructure.GPIO_Pin = BTNmove_pin;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_Init(BTN_Port, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = BTNselect_pin;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_Init(BTN_Port, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = BTNreturn_pin;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_Init(BTN_Port, &GPIO_InitStructure);
 
 }
 
-void led_on(uint8_t led){
-	GPIO_Write(led, 1);	// led on
+void led_on(led_pin){
+	GPIO_Write(LED_Port, LED1_pin, 1);	// led on
 	// switch (data_flag)
 	switch (data_flag){		// data_flag = when press collect in GUI?
 		case 1:
@@ -559,7 +563,7 @@ void led_on(uint8_t led){
 			UART2_Tx_DMA();
 			break;
 		}
-	GPIO_Write(led, 0);	// led off
+	GPIO_Write(LED_Port, LED1_pin, 0);	// led off
 	Delay(5);
 }
 
@@ -569,19 +573,19 @@ void led_on(uint8_t led){
 // Do not need timer delay
 
 void send_to_led(char data, int rs) {
-	GPIO_WritePin(GPIOB, LCD_RSpin, rs)	// rs = 1 for data, rs = 0 for cmd
-	GPIO_WritePin(GPIOB, LCD_D7pin, ((data >> 3) & 0x01));
-	GPIO_WritePin(GPIOB, LCD_D6pin, ((data >> 2) & 0x01));
-	GPIO_WritePin(GPIOB, LCD_D5pin, ((data >> 1) & 0x01));
-	GPIO_WritePin(GPIOB, LCD_D4pin, ((data >> 0) & 0x01));
+	GPIO_WritePin(LCD_Port, LCD_RSpin, rs)	// rs = 1 for data, rs = 0 for cmd
+	GPIO_WritePin(LCD_Port, LCD_D7pin, ((data >> 3) & 0x01));
+	GPIO_WritePin(LCD_Port, LCD_D6pin, ((data >> 2) & 0x01));
+	GPIO_WritePin(LCD_Port, LCD_D5pin, ((data >> 1) & 0x01));
+	GPIO_WritePin(LCD_Port, LCD_D4pin, ((data >> 0) & 0x01));
 
 	/* Toggle EN PIN to send the data
 	 * if the HCLK > 100 MHz, use the  20 us delay
 	 * if the LCD still doesn't work, increase the delay to 50, 80 or 100..
 	 */
-	GPIO_WritePin(GPIOB, LCD_Epin, 1);
+	GPIO_WritePin(LCD_Port, LCD_Epin, 1);
 	delay(20);
-	HAL_GPIO_WritePin(GPIOB, LCD_Epin, 0);
+	HAL_GPIO_WritePin(LCD_Port, LCD_Epin, 0);
 	delay(20);
 
 }
