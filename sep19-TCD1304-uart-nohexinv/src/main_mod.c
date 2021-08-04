@@ -46,6 +46,10 @@ void lcd_send_string(char* str);  // send string to the lcd
 void lcd_put_cur(int row, int col);  // put cursor at the entered position row (0 or 1), col (0-15);
 void lcd_clear(void);	// clear lcd
 
+// delay
+
+
+
 // LED pins
 #define LED_Port GPIOB
 #define LED1_pin GPIO_Pin_6 // GPIO_Pin_6 in GPIOB
@@ -71,8 +75,6 @@ void lcd_clear(void);	// clear lcd
 // How to control arduino LCD with STM32? Is there an existing library?
 
 
-
-
 // LCD variables
 uint8_t row = 0;
 uint8_t col = 0;
@@ -87,7 +89,7 @@ __IO uint8_t aRxBuffer[RxDataSize] = {0};	// Received commands by PC (12 bytes) 
 __IO uint8_t nRxBuffer[RxDataSize] = {0};	// Difference between nRX and aRx? UART = 8 bits
 
 
-// changes to make with new buffers --> don't need it. 
+/* changes to make with new buffers --> don't need it. 
 __IO uint16_t LED1avgBuffer[CCDSize];		// CCD data sent to UART
 __IO uint16_t LED2avgBuffer[CCDSize];		// CCD data sent to UART
 __IO uint16_t LED3avgBuffer[CCDSize];		// CCD data sent to UART
@@ -97,9 +99,10 @@ __IO uint16_t LED3Buffer1[CCDSize];		// CCD data sent to UART
 __IO uint16_t LED1Buffer2[CCDSize];		// CCD data sent to UART
 __IO uint16_t LED2Buffer2[CCDSize];		// CCD data sent to UART
 __IO uint16_t LED3Buffer2[CCDSize];		// CCD data sent to UART
+*/
 
 __IO uint8_t change_exposure_flag = 0;	// When we want to change SH and ICG, exposure_flag = 1;
-__IO uint8_t data_flag = 0;		// value 0 to 4 
+__IO uint8_t data_flag = 0;		// value 0 to 4
 __IO uint8_t pulse_counter = 0;		// No idea what it means/does
 __IO uint8_t CCD_flushed = 0;		// CCD_flushed = 0 when CCD is not completly flushed?
 __IO uint8_t avg_exps = 0;		// Number of average of exposures
@@ -107,7 +110,6 @@ __IO uint8_t exps_left = 0;		// Number of exposures left to mesure
 __IO uint8_t coll_mode = 0;		// collection mode : single vs continuous mode
 
 /* LED control */
-__IO uint8_t led = 0;		// with which led we are working : none (0), 1, 2, and 3.
 __IO uint8_t blink_time = 25;	// integration time is 15 ms
 __IO uint8_t blink_delay = 5;	// delay before next LED ON
 
@@ -133,7 +135,7 @@ __IO uint8_t blink_delay = 5;	// delay before next LED ON
 
 int main(void)
 {
-	int i = 0;
+	// int i = 0;
 
 	/* virtual_GND() enables GPIOA, GPIOB and GPIOC clocks */
 	virtual_GND();		// To keep noise low
@@ -161,7 +163,7 @@ int main(void)
 
 
 
-	//flush_CCD();
+	// flush_CCD();
 
 	// We are continually getting data from CCD. Must look into other functions. 
 
@@ -188,6 +190,12 @@ int main(void)
 			/* 	Reconfigure TIM2 and TIM5 */
 			TIM_ICG_SH_conf();
 		}
+
+		led_on(LED_Port, LED1_pin);
+		for(int i =0; i<500; i++)
+		led_on(LED_Port, LED2_pin);
+		for(int i =0; i<500; i++)
+		led_on(LED_Port, LED3_pin);
 
 		
 
@@ -303,62 +311,8 @@ int main(void)
 		*/
 
 		// GPIO(LED3, 1);
-		switch (data_flag){		// data_flag = when press collect in GUI?
-		case 1:
-			/* reset flags */
-			data_flag = 0;
-            		if (coll_mode == 1)	// single mode, average number = 1?
-				pulse_counter=6;
-
-			/* Transmit data in aTxBuffer */
-			UART2_Tx_DMA();
-			break;		
-
-		case 2:
-			/* reset flags */
-			data_flag = 0;
-
-			/* This is the first integration of several so overwrite avgBuffer */
-			for (int i=0; i<CCDSize; i++)
-				avgBuffer[i] = aTxBuffer[i];	
-			break;
-
-		case 3:
-			/* reset flags */
-			data_flag = 0;
-
-			/* Add new to previous integrations.
-			   This loop takes 3-4ms to complete. */		
-			for (int i=0; i<CCDSize; i++)
-				avgBuffer[i] = avgBuffer[i] + aTxBuffer[i];		
-			break;
-
-		case 4:
-			/* reset flags */
-			data_flag = 0;
-
-			/* Add new to previous integrations.
-			   This loop takes 3-4ms to complete. */		
-			for (int i=0; i<CCDSize; i++)
-				avgBuffer[i] = avgBuffer[i] + aTxBuffer[i];		
-
-			/* Store average values in aTxBuffer */
-			for (int i=0; i<CCDSize; i++)
-				aTxBuffer[i] = avgBuffer[i]/avg_exps;
-
-            if (coll_mode == 1){
-				exps_left = avg_exps;
-				pulse_counter=6;	
-			}			
-
-			// conserve aTxBuffer for each leds for at least 3 different measure --> 9 buffers of 3964
-			// Then calculate the slope / speed / rate of displacement of the curve.
-
-			/* Transmit data in aTxBuffer */
-			UART2_Tx_DMA();
-			break;
-		}
 	}
+		
 }
 
 
@@ -512,7 +466,7 @@ void ledBTN_conf(void)
 void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin){
 	// GPIO_ToggleBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 	// GPIO_ToggleBits(GPIOx, GPIO_Pin);
-	GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+	GPIO_WriteBit(GPIOx, GPIO_Pin, 1);
 
 	// switch (data_flag)
 	switch (data_flag){		// data_flag = when press collect in GUI?
@@ -531,7 +485,7 @@ void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin){
 			data_flag = 0;
 
 			/* This is the first integration of several so overwrite avgBuffer */
-			for (i=0; i<CCDSize; i++)
+			for (int i=0; i<CCDSize; i++)
 				avgBuffer[i] = aTxBuffer[i];	
 			break;
 
@@ -541,7 +495,7 @@ void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin){
 
 			/* Add new to previous integrations.
 			   This loop takes 3-4ms to complete. */		
-			for (i=0; i<CCDSize; i++)
+			for (int i=0; i<CCDSize; i++)
 				avgBuffer[i] = avgBuffer[i] + aTxBuffer[i];		
 			break;
 
@@ -551,11 +505,11 @@ void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin){
 
 			/* Add new to previous integrations.
 			   This loop takes 3-4ms to complete. */		
-			for (i=0; i<CCDSize; i++)
+			for (int i=0; i<CCDSize; i++)
 				avgBuffer[i] = avgBuffer[i] + aTxBuffer[i];		
 
 			/* Store average values in aTxBuffer */
-			for (i=0; i<CCDSize; i++)
+			for (int i=0; i<CCDSize; i++)
 				aTxBuffer[i] = avgBuffer[i]/avg_exps;
 
             if (coll_mode == 1){
@@ -571,9 +525,10 @@ void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin){
 			break;
 		}
 		// led off
-		GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+	GPIO_WriteBit(GPIOx, GPIO_Pin, 0);
+		
 	// GPIO_ToggleBits(GPIOx, GPIO_Pin);
-	Delay(5);
+	
 }
 
 
@@ -581,27 +536,30 @@ void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin){
 // From : https://controllerstech.com/interface-lcd-16x2-with-stm32-without-i2c/
 // Do not need timer delay
 
-void send_to_led(char data, int rs) {
+void send_to_lcd(char data, int rs) {
 	// void GPIO_WriteBit(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, BitAction BitVal)
 	// GPIO_WriteBit(LCD_Port, LCD_RSpin, rs);
 	
 	
-	GPIO_WritePin(LCD_Port, LCD_RSpin, rs);	// rs = 1 for data, rs = 0 for cmd
-	GPIO_WritePin(LCD_Port, LCD_D7pin, ((data >> 3) & 0x01));
-	GPIO_WritePin(LCD_Port, LCD_D6pin, ((data >> 2) & 0x01));
-	GPIO_WritePin(LCD_Port, LCD_D5pin, ((data >> 1) & 0x01));
-	GPIO_WritePin(LCD_Port, LCD_D4pin, ((data >> 0) & 0x01));
+	GPIO_WriteBit(LCD_Port, LCD_RSpin, rs);	// rs = 1 for data, rs = 0 for cmd
+	GPIO_WriteBit(LCD_Port, LCD_D7pin, ((data >> 3) & 0x01));
+	GPIO_WriteBit(LCD_Port, LCD_D6pin, ((data >> 2) & 0x01));
+	GPIO_WriteBit(LCD_Port, LCD_D5pin, ((data >> 1) & 0x01));
+	GPIO_WriteBit(LCD_Port, LCD_D4pin, ((data >> 0) & 0x01));
 
 	/* Toggle EN PIN to send the data
 	 * if the HCLK > 100 MHz, use the  20 us delay
 	 * if the LCD still doesn't work, increase the delay to 50, 80 or 100..
 	 */
-	GPIO_WritePin(LCD_Port, LCD_Epin, 1);
-	Delay(20);
-	HAL_GPIO_WritePin(LCD_Port, LCD_Epin, 0);
-	Delay(20);
+	GPIO_WriteBit(LCD_Port, LCD_Epin, 1);
+	for (int i = 0; i < 200; i++)
+	GPIO_WriteBit(LCD_Port, LCD_Epin, 0);
+	for (int i = 0; i < 200; i++){
+
+	}
 
 }
+
 
 void lcd_send_cmd(char cmd)
 {
@@ -632,7 +590,7 @@ void lcd_send_data(char data)
 void lcd_clear(void)
 {
 	lcd_send_cmd(0x01);
-	Delay(2);
+	for (int i = 0; i < 100; i++);
 }
 
 void lcd_put_cur(int row, int col)
@@ -654,33 +612,38 @@ void lcd_put_cur(int row, int col)
 void lcd_init(void)
 {
 	// 4 bit initialisation
-	Delay(50);  // wait for >40ms
+	for (int i = 0; i < 40000; i++)  // wait for >40ms
 	lcd_send_cmd(0x30);
-	Delay(5);  // wait for >4.1ms
+	for (int i = 0; i < 4000; i++)  // wait for >4.1ms
 	lcd_send_cmd(0x30);
-	Delay(1);  // wait for >100us
+	for (int i = 0; i < 100; i++)  // wait for >100us
 	lcd_send_cmd(0x30);
-	Delay(10);
+	for (int i = 0; i < 100; i++)
 	lcd_send_cmd(0x20);  // 4bit mode
-	Delay(10);
+	for (int i = 0; i < 100; i++)
 
-	// dislay initialisation
+	// display initialisation
 	lcd_send_cmd(0x28); // Function set --> DL=0 (4 bit mode), N = 1 (2 line display) F = 0 (5x8 characters)
-	Delay(1);
+	for (int i = 0; i < 100; i++)
 	lcd_send_cmd(0x08); //Display on/off control --> D=0,C=0, B=0  ---> display off
-	Delay(1);
+	for (int i = 0; i < 100; i++)
 	lcd_send_cmd(0x01);  // clear display
-	Delay(1);
-	Delay(1);
+	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 100; i++)
 	lcd_send_cmd(0x06); //Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
-	Delay(1);
+	for (int i = 0; i < 100; i++)
 	lcd_send_cmd(0x0C); //Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
 }
+
+
 
 void lcd_send_string(char* str)
 {
 	while (*str) lcd_send_data(*str++);
-}
+} 
+
+ // Delay functions
+ 
 
 
 

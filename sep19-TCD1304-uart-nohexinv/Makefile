@@ -6,6 +6,8 @@ PROJECT_NAME = F401_FW_TCD1304
 PROJECT_SRC = src
 STM_SRC = ../Libraries/STM32F4xx_StdPeriph_Driver/src
 
+#// ../Libraries/CMSIS/Device/ST/STM32F4xx/Include
+
 vpath %.c $(PROJECT_SRC)
 vpath %.c $(STM_SRC)
 
