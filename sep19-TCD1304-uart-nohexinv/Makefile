@@ -9,7 +9,7 @@ STM_SRC = ../Libraries/STM32F4xx_StdPeriph_Driver/src
 vpath %.c $(PROJECT_SRC)
 vpath %.c $(STM_SRC)
 
-SRCS = main.c
+SRCS = main_mod.c
 
 SRCS += Device/startup_stm32f401xe.s
 
@@ -95,4 +95,4 @@ $(PROJECT_NAME).elf: $(SRCS) $(EXT_OBJ)
 	$(CC) -c -o $@ $(INCLUDE) $(DEFS) $(CFLAGS) $^
 
 clean:
-	rm -f *.o $(PROJECT_NAME).elf $(PROJECT_NAME).hex $(PROJECT_NAME).bin
+	del -f *.o $(PROJECT_NAME).elf $(PROJECT_NAME).hex $(PROJECT_NAME).bin
