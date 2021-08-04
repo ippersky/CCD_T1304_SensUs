@@ -36,7 +36,7 @@ void NVIC_conf(void);
 void ledBTN_conf(void);
 
 // LED function
-void led_on(uint8_t led);
+void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 
 // LCD
 void lcd_init(void);   // initialize lcd
@@ -69,6 +69,8 @@ void lcd_clear(void);	// clear lcd
 #define LCD_RSpin GPIO_Pin_15 
 // LCD V0 : enter value for contrast, no need of potentiometer
 // How to control arduino LCD with STM32? Is there an existing library?
+
+
 
 
 // LCD variables
@@ -186,6 +188,8 @@ int main(void)
 			/* 	Reconfigure TIM2 and TIM5 */
 			TIM_ICG_SH_conf();
 		}
+
+		
 
 
 
@@ -315,7 +319,7 @@ int main(void)
 			data_flag = 0;
 
 			/* This is the first integration of several so overwrite avgBuffer */
-			for (i=0; i<CCDSize; i++)
+			for (int i=0; i<CCDSize; i++)
 				avgBuffer[i] = aTxBuffer[i];	
 			break;
 
@@ -325,7 +329,7 @@ int main(void)
 
 			/* Add new to previous integrations.
 			   This loop takes 3-4ms to complete. */		
-			for (i=0; i<CCDSize; i++)
+			for (int i=0; i<CCDSize; i++)
 				avgBuffer[i] = avgBuffer[i] + aTxBuffer[i];		
 			break;
 
@@ -335,11 +339,11 @@ int main(void)
 
 			/* Add new to previous integrations.
 			   This loop takes 3-4ms to complete. */		
-			for (i=0; i<CCDSize; i++)
+			for (int i=0; i<CCDSize; i++)
 				avgBuffer[i] = avgBuffer[i] + aTxBuffer[i];		
 
 			/* Store average values in aTxBuffer */
-			for (i=0; i<CCDSize; i++)
+			for (int i=0; i<CCDSize; i++)
 				aTxBuffer[i] = avgBuffer[i]/avg_exps;
 
             if (coll_mode == 1){
@@ -505,8 +509,11 @@ void ledBTN_conf(void)
 
 }
 
-void led_on(led_pin){
-	GPIO_Write(LED_Port, LED1_pin, 1);	// led on
+void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin){
+	// GPIO_ToggleBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
+	// GPIO_ToggleBits(GPIOx, GPIO_Pin);
+	GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+
 	// switch (data_flag)
 	switch (data_flag){		// data_flag = when press collect in GUI?
 		case 1:
@@ -563,7 +570,9 @@ void led_on(led_pin){
 			UART2_Tx_DMA();
 			break;
 		}
-	GPIO_Write(LED_Port, LED1_pin, 0);	// led off
+		// led off
+		GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+	// GPIO_ToggleBits(GPIOx, GPIO_Pin);
 	Delay(5);
 }
 
@@ -573,7 +582,11 @@ void led_on(led_pin){
 // Do not need timer delay
 
 void send_to_led(char data, int rs) {
-	GPIO_WritePin(LCD_Port, LCD_RSpin, rs)	// rs = 1 for data, rs = 0 for cmd
+	// void GPIO_WriteBit(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, BitAction BitVal)
+	// GPIO_WriteBit(LCD_Port, LCD_RSpin, rs);
+	
+	
+	GPIO_WritePin(LCD_Port, LCD_RSpin, rs);	// rs = 1 for data, rs = 0 for cmd
 	GPIO_WritePin(LCD_Port, LCD_D7pin, ((data >> 3) & 0x01));
 	GPIO_WritePin(LCD_Port, LCD_D6pin, ((data >> 2) & 0x01));
 	GPIO_WritePin(LCD_Port, LCD_D5pin, ((data >> 1) & 0x01));
@@ -584,9 +597,9 @@ void send_to_led(char data, int rs) {
 	 * if the LCD still doesn't work, increase the delay to 50, 80 or 100..
 	 */
 	GPIO_WritePin(LCD_Port, LCD_Epin, 1);
-	delay(20);
+	Delay(20);
 	HAL_GPIO_WritePin(LCD_Port, LCD_Epin, 0);
-	delay(20);
+	Delay(20);
 
 }
 
@@ -670,4 +683,4 @@ void lcd_send_string(char* str)
 }
 
 
-}
+
