@@ -224,12 +224,18 @@ bit 11 : number of average : from 1 to 15
 
 	while(1)
 	{
+		/*GPIO_WriteBit(LED_Port, LED1_pin,1);
+		for(int i = 0; i<500; i++)
+		GPIO_WriteBit(LED_Port, LED1_pin, 0);
+		for(int i = 0; i<500; i++)
+		*/
 		
 		led_on(LED_Port, LED1_pin);
 		for(int i=0; i<500; i++) // delay between leds
 		led_on(LED_Port, LED2_pin);
 		for(int i =0; i<500; i++)
 		led_on(LED_Port, LED3_pin);
+		
 
 		
 
