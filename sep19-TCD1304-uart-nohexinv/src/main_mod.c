@@ -48,6 +48,7 @@ void lcd_clear(void);	// clear lcd
 
 // delay
 // for loop
+void delay(unsigned int nCount);
 
 
 // LED pins
@@ -230,11 +231,26 @@ bit 11 : number of average : from 1 to 15
 		for(int i = 0; i<500; i++)
 		*/
 		
+
+		// FROM : https://www.handsonembedded.com/stm32f103-spl-tutorial-2/
+        /* Toggle LED on PA0 */
+        // Reset bit will turn on LED (because the logic is interved)
+        GPIO_ResetBits(LED_Port, LED1_pin);
+        delay(1000);
+        // Set bit will turn off LED (because the logic is interved)
+        GPIO_SetBits(LED_Port, LED1_pin);
+        delay(1000);
+		/*
 		led_on(LED_Port, LED1_pin);
 		for(int i=0; i<500; i++) // delay between leds
 		led_on(LED_Port, LED2_pin);
 		for(int i =0; i<500; i++)
 		led_on(LED_Port, LED3_pin);
+		*/
+
+    }
+
+		
 		
 
 		
@@ -337,9 +353,7 @@ bit 11 : number of average : from 1 to 15
 
 		*/
 
-	}
-		
-}
+
 
 /*
 		if (change_exposure_flag == 1)		// When want to change SH, ICG periods. What about the number of average?
@@ -362,6 +376,7 @@ bit 11 : number of average : from 1 to 15
 		}
 
 */
+}
 
 
 
@@ -456,10 +471,10 @@ void ledBTN_conf(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;	// Output
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;	// Output
     GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;	// push puk=ll
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;	// low
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;	// no pull, no push
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_PP;	// no pull, no push
 
 	/* 	Clock the GPIOs */
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
@@ -697,6 +712,13 @@ void lcd_send_string(char* str)
 } 
 
  // Delay functions
+ void delay(unsigned int nCount)
+{
+    unsigned int i, j;
+ 
+    for (i = 0; i < nCount; i++)
+        for (j = 0; j < 0x2AFF; j++);
+}
  
 
 
