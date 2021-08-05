@@ -38,8 +38,10 @@
 #include "ADC_conf.h"
 #include "UART_conf.h"
 
-// LED
-// void led_on(uint8_t led, uint16_t buffer);
+void virtual_GND(void);
+void flush_CCD(void);
+void NVIC_conf(void);
+void ledBTN_conf(void);
 
 // LCD
 void lcd_init(void);   // initialize lcd

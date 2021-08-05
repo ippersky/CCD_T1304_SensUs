@@ -47,7 +47,7 @@ void lcd_put_cur(int row, int col);  // put cursor at the entered position row (
 void lcd_clear(void);	// clear lcd
 
 // delay
-
+// for loop
 
 
 // LED pins
@@ -88,19 +88,15 @@ __IO uint16_t avgBuffer[CCDSize] = {0};		// Averaged CCD data sent to UART
 __IO uint8_t aRxBuffer[RxDataSize] = {0};	// 
 __IO uint8_t nRxBuffer[RxDataSize] = {0};	// Transfered aRxBuffer to nRx Buffer
 /* Received commands by PC (12 bytes) : SH period, ICH period, number of average
-bit 0
-bit 1
-bit 2
-bit 3
-bit 4
-bit 5
-bit 6
-bit 7
-bit 8
-bit 9
-bit 10
-bit 11
-bit 12
+ICG_period = nRxBuffer[6]<<24|nRxBuffer[7]<<16|nRxBuffer[8]<<8|nRxBuffer[9];
+SH_period = nRxBuffer[2]<<24|nRxBuffer[3]<<16|nRxBuffer[4]<<8|nRxBuffer[5]
+# The firmware expects 12 bytes from the computer and will not do anything until 12 bytes have been received.
+# The format is:
+# byte[1-2]: The characters E and R. Defines where the firmware should start reading in its circular input-buffer.
+# byte[3-6]: The 4 bytes constituting the 32-bit int holding the SH-period
+# byte[7-10]: The 4 bytes constituting the 32-bit int holding the ICG-period
+# byte[11]: Continuous flag: 0 equals one acquisition, 1 equals continuous mode
+# byte[12]: The number of integrations to average
 */
 
 
@@ -191,9 +187,37 @@ int main(void)
 	flush_CCD();
 	ICG_period = 100000;
 	SH_period = 100;
+
+
+/* Received commands by PC (12 bytes) : SH period, ICH period, number of average
+ICG_period = nRxBuffer[6]<<24|nRxBuffer[7]<<16|nRxBuffer[8]<<8|nRxBuffer[9];
+SH_period = nRxBuffer[2]<<24|nRxBuffer[3]<<16|nRxBuffer[4]<<8|nRxBuffer[5]
+bit 0 : 69
+bit 1 : 82
+bit 2 : SH
+bit 3 : SH
+bit 4 : SH
+bit 5 : SH
+bit 6 : ICG
+bit 7 : ICG
+bit 8 : ICG
+bit 9 : ICG
+bit 10 : continuous or one-shot
+bit 11 : number of average : from 1 to 15
+*/
+
+	nRxBuffer[0] = 0; // reset
+	nRxBuffer[1] = 0; // reset
+	nRxBuffer[10] = 0;	// one-shot
+	nRxBuffer[11] = 1;  // 1 average
+
+
 	TIM_Cmd(TIM2, DISABLE);
 	TIM_Cmd(TIM5, DISABLE);
 	TIM_ICG_SH_conf();
+
+	// what are the uart commands?
+
 
 
 
@@ -307,20 +331,6 @@ int main(void)
 
 		*/
 
-
-
-
-		/* GPIO(LED1, 1);
-		GPIO(LED1, 0);
-		delay(5);
-
-		*/
-
-		/* GPIO(LED2, 1);
-
-		*/
-
-		// GPIO(LED3, 1);
 	}
 		
 }
@@ -499,48 +509,57 @@ void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin){
 	// GPIO_ToggleBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 	// GPIO_ToggleBits(GPIOx, GPIO_Pin);
 	GPIO_WriteBit(GPIOx, GPIO_Pin, 1);
+	for(int i = 0; i<100; i++)	// delay
+	pulse_counter=6;	// Start new acquisition at new ICG pulse
+	UART2_Tx_DMA();		// Transmit data to UART
+	GPIO_WriteBit(GPIOx, GPIO_Pin, 0);
+		
+	// GPIO_ToggleBits(GPIOx, GPIO_Pin);
+	
+}
 
-	// switch (data_flag)
+/*switch (data_flag)
+	
 	switch (data_flag){		// data_flag = when press collect in GUI?
 		case 1:
-			/* reset flags */
+			// reset flags 
 			data_flag = 0;
             		if (coll_mode == 1)	// single mode, average number = 1?
-				pulse_counter=6;
+					pulse_counter=6;	// Start new acquisition at new ICG pulse
 
-			/* Transmit data in aTxBuffer */
+			//Transmit data in aTxBuffer 
 			UART2_Tx_DMA();
 			break;		
 
 		case 2:
-			/* reset flags */
+			// reset flags
 			data_flag = 0;
 
-			/* This is the first integration of several so overwrite avgBuffer */
+			// This is the first integration of several so overwrite avgBuffer
 			for (int i=0; i<CCDSize; i++)
 				avgBuffer[i] = aTxBuffer[i];	
 			break;
 
 		case 3:
-			/* reset flags */
+			// reset flags
 			data_flag = 0;
 
-			/* Add new to previous integrations.
-			   This loop takes 3-4ms to complete. */		
+			// Add new to previous integrations.
+			   This loop takes 3-4ms to complete.		
 			for (int i=0; i<CCDSize; i++)
 				avgBuffer[i] = avgBuffer[i] + aTxBuffer[i];		
 			break;
 
 		case 4:
-			/* reset flags */
+			// reset flags
 			data_flag = 0;
 
-			/* Add new to previous integrations.
-			   This loop takes 3-4ms to complete. */		
+			// Add new to previous integrations.
+			   This loop takes 3-4ms to complete.		
 			for (int i=0; i<CCDSize; i++)
 				avgBuffer[i] = avgBuffer[i] + aTxBuffer[i];		
 
-			/* Store average values in aTxBuffer */
+			// Store average values in aTxBuffer
 			for (int i=0; i<CCDSize; i++)
 				aTxBuffer[i] = avgBuffer[i]/avg_exps;
 
@@ -552,16 +571,13 @@ void led_on(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin){
 			// conserve aTxBuffer for each leds for at least 3 different measure --> 9 buffers of 3964
 			// Then calculate the slope / speed / rate of displacement of the curve.
 
-			/* Transmit data in aTxBuffer */
+			// Transmit data in aTxBuffer
 			UART2_Tx_DMA();
 			break;
 		}
-		// led off
-	GPIO_WriteBit(GPIOx, GPIO_Pin, 0);
-		
-	// GPIO_ToggleBits(GPIOx, GPIO_Pin);
-	
-}
+
+
+*/
 
 
 // functions to lcd
