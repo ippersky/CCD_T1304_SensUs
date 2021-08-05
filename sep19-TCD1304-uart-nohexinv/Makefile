@@ -1,7 +1,7 @@
 CC      = arm-none-eabi-gcc
 OBJCOPY = arm-none-eabi-objcopy
 
-PROJECT_NAME = F401_FW_TCD1304
+PROJECT_NAME = F411_FW_TCD1304
 
 PROJECT_SRC = src
 STM_SRC = ../Libraries/STM32F4xx_StdPeriph_Driver/src
@@ -11,7 +11,7 @@ STM_SRC = ../Libraries/STM32F4xx_StdPeriph_Driver/src
 vpath %.c $(PROJECT_SRC)
 vpath %.c $(STM_SRC)
 
-SRCS = main_mod.c
+SRCS = main.c
 
 SRCS += Device/startup_stm32f401xe.s
 

@@ -85,8 +85,23 @@ __IO uint32_t ICG_period = 500000;		// Integration Clear Gate period
 
 __IO uint16_t aTxBuffer[CCDSize];		// CCD data sent to UART
 __IO uint16_t avgBuffer[CCDSize] = {0};		// Averaged CCD data sent to UART
-__IO uint8_t aRxBuffer[RxDataSize] = {0};	// Received commands by PC (12 bytes) : SH period, ICH period, number of average
-__IO uint8_t nRxBuffer[RxDataSize] = {0};	// Difference between nRX and aRx? UART = 8 bits
+__IO uint8_t aRxBuffer[RxDataSize] = {0};	// 
+__IO uint8_t nRxBuffer[RxDataSize] = {0};	// Transfered aRxBuffer to nRx Buffer
+/* Received commands by PC (12 bytes) : SH period, ICH period, number of average
+bit 0
+bit 1
+bit 2
+bit 3
+bit 4
+bit 5
+bit 6
+bit 7
+bit 8
+bit 9
+bit 10
+bit 11
+bit 12
+*/
 
 
 /* changes to make with new buffers --> don't need it. 
@@ -102,8 +117,13 @@ __IO uint16_t LED3Buffer2[CCDSize];		// CCD data sent to UART
 */
 
 __IO uint8_t change_exposure_flag = 0;	// When we want to change SH and ICG, exposure_flag = 1;
-__IO uint8_t data_flag = 0;		// value 0 to 4
-__IO uint8_t pulse_counter = 0;		// No idea what it means/does
+__IO uint8_t data_flag = 0;		// value 0 to 4 : indicate what calculations we need to do. See stm32f4zz.it.c
+// For our application, we want data flah = 1. 
+// This means that we only want to read once then send data to UART.
+__IO uint8_t pulse_counter = 0;		// stm32f4xx_it.c
+// at pulse_counter = 3 --> CCD has been flushed
+// at pulse_counter = 6 --> the CCD has collected once
+// if averaing, pulse counter reset to 6
 __IO uint8_t CCD_flushed = 0;		// CCD_flushed = 0 when CCD is not completly flushed?
 __IO uint8_t avg_exps = 0;		// Number of average of exposures
 __IO uint8_t exps_left = 0;		// Number of exposures left to mesure
@@ -165,34 +185,24 @@ int main(void)
 
 	// flush_CCD();
 
-	// We are continually getting data from CCD. Must look into other functions. 
+	// We are continually getting data from CCD.
+
+	// Setup - no changes of icg, sh perio and # of averages
+	flush_CCD();
+	ICG_period = 100000;
+	SH_period = 100;
+	TIM_Cmd(TIM2, DISABLE);
+	TIM_Cmd(TIM5, DISABLE);
+	TIM_ICG_SH_conf();
 
 
 
 
 	while(1)
 	{
-		if (change_exposure_flag == 1)		// When want to change SH, ICG periods. What about the number of average?
-		{
-			/* reset flag */
-			change_exposure_flag = 0;
-			
-			flush_CCD();
-
-			/* set new integration time */		// 32 bits to 8 bits, shifts because of little/big-endian
-			ICG_period = nRxBuffer[6]<<24|nRxBuffer[7]<<16|nRxBuffer[8]<<8|nRxBuffer[9];
-			SH_period = nRxBuffer[2]<<24|nRxBuffer[3]<<16|nRxBuffer[4]<<8|nRxBuffer[5];
-
-			/*	Disable ICG (TIM5) and SH (TIM2) before reconfiguring*/
-			TIM_Cmd(TIM2, DISABLE);
-			TIM_Cmd(TIM5, DISABLE);
-
-			/* 	Reconfigure TIM2 and TIM5 */
-			TIM_ICG_SH_conf();
-		}
-
+		
 		led_on(LED_Port, LED1_pin);
-		for(int i =0; i<500; i++)
+		for(int i=0; i<500; i++) // delay between leds
 		led_on(LED_Port, LED2_pin);
 		for(int i =0; i<500; i++)
 		led_on(LED_Port, LED3_pin);
@@ -314,6 +324,28 @@ int main(void)
 	}
 		
 }
+
+/*
+		if (change_exposure_flag == 1)		// When want to change SH, ICG periods. What about the number of average?
+		{
+			// reset flag
+			change_exposure_flag = 0;
+			
+			flush_CCD();
+
+			// set new integration time		// 32 bits to 8 bits, shifts because of little/big-endian
+			ICG_period = nRxBuffer[6]<<24|nRxBuffer[7]<<16|nRxBuffer[8]<<8|nRxBuffer[9];
+			SH_period = nRxBuffer[2]<<24|nRxBuffer[3]<<16|nRxBuffer[4]<<8|nRxBuffer[5];
+
+			//	Disable ICG (TIM5) and SH (TIM2) before reconfiguring
+			TIM_Cmd(TIM2, DISABLE);
+			TIM_Cmd(TIM5, DISABLE);
+
+			// 	Reconfigure TIM2 and TIM5
+			TIM_ICG_SH_conf();
+		}
+
+*/
 
 
 
